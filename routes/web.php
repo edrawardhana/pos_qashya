@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'));
@@ -17,10 +18,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
 
-    // Contoh pembatasan akses per role (dipakai di iterasi berikutnya)
+    // Route khusus admin (termasuk CRUD Produk)
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         // route khusus admin
+        Route::resource('products', ProductController::class);
     });
+
     Route::middleware('role:admin,kasir')->prefix('kasir')->group(function () {
         // route untuk kasir (dan admin)
     });
