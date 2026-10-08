@@ -9,24 +9,44 @@ use Illuminate\Validation\Rule;
 class ProductController extends Controller
 {
     public function index(Request $request)
-    {
-        $products = Product::search($request->q)
-            ->category($request->category)
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
+{
+    // Ambil daftar kategori unik untuk dropdown filter
+    $categoryList = Product::select('category')->distinct()->pluck('category');
 
-        $categoryList = Product::whereNotNull('category')
-            ->distinct()
-            ->orderBy('category')
-            ->pluck('category');
+    $query = Product::query();
 
-        return view('products.index', compact('products', 'categoryList'));
+    // Filter pencarian teks (nama, SKU, atau deskripsi)
+    if ($request->filled('q')) {
+        $keyword = $request->q;
+        $query->where(function($q) use ($keyword) {
+            $q->where('name', 'like', "%{$keyword}%")
+            ->orWhere('code', 'like', "%{$keyword}%")
+            ->orWhere('description', 'like', "%{$keyword}%");
+        });
     }
+
+    // Filter berdasarkan kategori
+    if ($request->filled('category')) {
+        $query->where('category', $request->category);
+    }
+
+    // Filter berdasarkan status stok
+    if ($request->filled('stock_status')) {
+        if ($request->stock_status === 'safe') {
+            $query->whereColumn('stock', '>', 'min_stock');
+        } elseif ($request->stock_status === 'alert') {
+            $query->whereColumn('stock', '<=', 'min_stock');
+        }
+    }
+
+    $products = $query->latest()->paginate(10);
+
+    return view('admin.products.index', compact('products', 'categoryList'));
+}
 
     public function create()
     {
-        return view('products.create');
+        return view('admin.products.create');
     }
 
     public function store(Request $request)
@@ -35,13 +55,13 @@ class ProductController extends Controller
 
         Product::create($data);
 
-        return redirect()->route('products.index')
+        return redirect()->route('admin.products.index') // Pastikan nama route sesuai (atau sesuaikan dengan penamaan route produk Anda)
             ->with('success', 'Produk berhasil ditambahkan.');
     }
 
     public function edit(Product $product)
     {
-        return view('products.edit', compact('product'));
+        return view('admin.produk.edit', compact('product'));
     }
 
     public function update(Request $request, Product $product)
@@ -50,7 +70,7 @@ class ProductController extends Controller
 
         $product->update($data);
 
-        return redirect()->route('products.index')
+        return redirect()->route('admin.products.index')
             ->with('success', 'Produk berhasil diperbarui.');
     }
 
@@ -58,7 +78,7 @@ class ProductController extends Controller
     {
         $product->delete();
 
-        return redirect()->route('products.index')
+        return redirect()->route('admin.products.index')
             ->with('success', 'Produk berhasil dihapus.');
     }
 
