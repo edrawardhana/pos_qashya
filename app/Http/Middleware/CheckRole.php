@@ -8,19 +8,16 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    /**
-     * Usage: ->middleware('role:admin') or ->middleware('role:admin,kasir')
-     */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
-        if (! $user) {
-            return redirect()->route('login');
+        if (! $user || ! $user->is_active) {
+            abort(403, 'Akun tidak aktif.');
         }
 
-        if (! $user->hasRole(...$roles)) {
-            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+        if (! in_array($user->role?->name, $roles, true)) {
+            abort(403, 'Anda tidak punya akses ke halaman ini.');
         }
 
         return $next($request);

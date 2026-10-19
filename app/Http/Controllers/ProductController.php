@@ -2,98 +2,84 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProductRequest;
 use App\Models\Product;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class ProductController extends Controller
 {
-    public function index(Request $request)
-{
-    // Ambil daftar kategori unik untuk dropdown filter
-    $categoryList = Product::select('category')->distinct()->pluck('category');
-
-    $query = Product::query();
-
-    // Filter pencarian teks (nama, SKU, atau deskripsi)
-    if ($request->filled('q')) {
-        $keyword = $request->q;
-        $query->where(function($q) use ($keyword) {
-            $q->where('name', 'like', "%{$keyword}%")
-            ->orWhere('code', 'like', "%{$keyword}%")
-            ->orWhere('description', 'like', "%{$keyword}%");
-        });
-    }
-
-    // Filter berdasarkan kategori
-    if ($request->filled('category')) {
-        $query->where('category', $request->category);
-    }
-
-    // Filter berdasarkan status stok
-    if ($request->filled('stock_status')) {
-        if ($request->stock_status === 'safe') {
-            $query->whereColumn('stock', '>', 'min_stock');
-        } elseif ($request->stock_status === 'alert') {
-            $query->whereColumn('stock', '<=', 'min_stock');
-        }
-    }
-
-    $products = $query->latest()->paginate(10);
-
-    return view('admin.products.index', compact('products', 'categoryList'));
-}
-
-    public function create()
+    public function index(Request $request): View
     {
-        return view('admin.products.create');
+        $products = Product::query()
+            ->search($request->string('q')->toString())
+            ->when($request->filled('category'), fn ($q) => $q->where('category', $request->string('category')))
+            ->when($request->filled('stock'), fn ($q) => $q->stockStatus($request->string('stock')->toString()))
+            ->orderBy('name')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('products.index', [
+            'products' => $products,
+            'categories' => Product::CATEGORIES,
+        ]);
     }
 
-    public function store(Request $request)
+    public function create(): View
     {
-        $data = $request->validate($this->rules());
+        return view('products.create', ['categories' => Product::CATEGORIES]);
+    }
+
+    public function store(ProductRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $data['image'] = $request->hasFile('image')
+            ? $request->file('image')->store('products', 'public')
+            : null;
 
         Product::create($data);
 
-        return redirect()->route('admin.products.index') // Pastikan nama route sesuai (atau sesuaikan dengan penamaan route produk Anda)
-            ->with('success', 'Produk berhasil ditambahkan.');
+        return redirect()->route('products.index')->with('status', 'Produk berhasil ditambahkan.');
     }
 
-    public function edit(Product $product)
+    public function edit(Product $product): View
     {
-        return view('admin.produk.edit', compact('product'));
+        return view('products.edit', [
+            'product' => $product,
+            'categories' => Product::CATEGORIES,
+        ]);
     }
 
-    public function update(Request $request, Product $product)
+    public function update(ProductRequest $request, Product $product): RedirectResponse
     {
-        $data = $request->validate($this->rules($product->id));
+        $data = $request->validated();
+
+        if ($request->hasFile('image')) {
+            $this->deleteImage($product->image);
+            $data['image'] = $request->file('image')->store('products', 'public');
+        } else {
+            unset($data['image']); // pertahankan gambar lama
+        }
 
         $product->update($data);
 
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Produk berhasil diperbarui.');
+        return redirect()->route('products.index')->with('status', 'Produk berhasil diperbarui.');
     }
 
-    public function destroy(Product $product)
+    public function destroy(Product $product): RedirectResponse
     {
+        $this->deleteImage($product->image);
         $product->delete();
 
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Produk berhasil dihapus.');
+        return redirect()->route('products.index')->with('status', 'Produk berhasil dihapus.');
     }
 
-    private function rules(?int $ignoreId = null): array
+    private function deleteImage(?string $path): void
     {
-        return [
-            'code'        => ['required', 'string', 'max:50', Rule::unique('products', 'code')->ignore($ignoreId)],
-            'name'        => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'category'    => ['required', 'string', 'max:100'],
-            'price'       => ['required', 'numeric', 'min:0'],
-            'cost'        => ['nullable', 'numeric', 'min:0'],
-            'stock'       => ['required', 'integer', 'min:0'],
-            'min_stock'   => ['required', 'integer', 'min:0'],
-            'image_url'   => ['nullable', 'url', 'max:255'],
-        ];
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }

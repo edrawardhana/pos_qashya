@@ -2,35 +2,65 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
+    public const CATEGORIES = ['Gamis', 'Hijab', 'Tunik', 'Outer', 'Mukena', 'Aksesoris'];
+
+    public const STOCK_HABIS = 'habis';
+    public const STOCK_MENIPIS = 'menipis';
+    public const STOCK_AMAN = 'aman';
+
     protected $fillable = [
-        'code',
-        'name',
-        'description',
-        'category',
-        'price',
-        'cost',
-        'stock',
-        'min_stock',
-        'image_url',
+        'sku', 'name', 'category', 'price', 'stock', 'min_stock', 'description', 'image',
     ];
 
-    public function scopeSearch($query, ?string $keyword)
+    protected function casts(): array
     {
-        return $query->when($keyword, function ($q) use ($keyword) {
-            $q->where(function ($q) use ($keyword) {
-                $q->where('name', 'like', "%{$keyword}%")
-                ->orWhere('code', 'like', "%{$keyword}%")
-                ->orWhere('description', 'like', "%{$keyword}%");
-            });
+        return [
+            'price' => 'integer',
+            'stock' => 'integer',
+            'min_stock' => 'integer',
+        ];
+    }
+
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        if ($term === '') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($term) {
+            $q->where('name', 'like', "%{$term}%")
+                ->orWhere('sku', 'like', "%{$term}%")
+                ->orWhere('description', 'like', "%{$term}%");
         });
     }
 
-    public function scopeCategory($query, ?string $category)
+    public function scopeStockStatus(Builder $query, string $status): Builder
     {
-        return $query->when($category, fn ($q) => $q->where('category', $category));
+        return match ($status) {
+            self::STOCK_HABIS => $query->where('stock', 0),
+            self::STOCK_MENIPIS => $query->where('stock', '>', 0)->whereColumn('stock', '<=', 'min_stock'),
+            self::STOCK_AMAN => $query->whereColumn('stock', '>', 'min_stock'),
+            default => $query,
+        };
+    }
+
+    public function getStockStatusAttribute(): string
+    {
+        if ($this->stock === 0) {
+            return self::STOCK_HABIS;
+        }
+
+        return $this->stock <= $this->min_stock ? self::STOCK_MENIPIS : self::STOCK_AMAN;
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image ? Storage::disk('public')->url($this->image) : null;
     }
 }

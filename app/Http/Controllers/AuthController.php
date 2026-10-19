@@ -2,54 +2,45 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(): View
     {
         return view('auth.login');
     }
 
-    public function login(Request $request)
+    public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email'    => ['required', 'email'],
+            'email' => ['required', 'email'],
             'password' => ['required'],
+        ], [
+            'email.required' => 'Email wajib diisi.',
+            'password.required' => 'Password wajib diisi.',
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-            return redirect()->intended('/dashboard');
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            return back()
+                ->withErrors(['email' => 'Email atau password salah.'])
+                ->onlyInput('email');
         }
 
-        return back()
-            ->withErrors(['email' => 'Email atau password salah.'])
-            ->onlyInput('email');
+        if (! $request->user()->is_active) {
+            Auth::logout();
+            return back()->withErrors(['email' => 'Akun Anda nonaktif.'])->onlyInput('email');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard'));
     }
 
-    public function showRegister()
-    {
-        return view('auth.register');
-    }
-
-    public function register(Request $request)
-    {
-        $data = $request->validate([
-            'name'     => ['required', 'string', 'max:100'],
-            'email'    => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'min:8', 'confirmed'],
-            'role'     => ['required', 'in:admin,kasir'],
-        ]);
-
-        User::create($data);
-
-        return redirect()->route('login')->with('success', 'Registrasi berhasil, silakan login.');
-    }
-
-    public function logout(Request $request)
+    public function logout(Request $request): RedirectResponse
     {
         Auth::logout();
         $request->session()->invalidate();

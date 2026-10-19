@@ -1,56 +1,46 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CashierController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect()->route('login'));
-
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
 });
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Dashboard bersama (bisa diakses admin & kasir, tampilannya nanti dibedakan via controller/view jika perlu)
-    Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
+    Route::get('/', function () {
+        return view('dashboard');
+    })->name('dashboard');
 
-    // ==========================================
-    // MENU KHUSUS ADMIN
-    // ==========================================
+    // Admin dan kasir: lihat daftar produk (harga & stok)
+    Route::get('/produk', [ProductController::class, 'index'])->name('products.index');
+
+    // Hanya kasir: transaksi penjualan
+    Route::middleware('role:kasir')->group(function () {
+        Route::get('/transaksi', [CashierController::class, 'index'])->name('cashier.index');
+        Route::post('/transaksi', [CashierController::class, 'store'])->name('cashier.store');
+        Route::get('/transaksi/{transaction}', [CashierController::class, 'show'])->name('cashier.show');
+    });
+
+    // Hanya admin: kelola produk
     Route::middleware('role:admin')->group(function () {
-        // Atur Akun (Resource Controller dari UserController kamu)
-        Route::resource('users', UserController::class)->except(['show']);
+        Route::get('/produk/tambah', [ProductController::class, 'create'])->name('products.create');
+        Route::post('/produk', [ProductController::class, 'store'])->name('products.store');
+        Route::get('/produk/{product}/ubah', [ProductController::class, 'edit'])->name('products.edit');
+        Route::put('/produk/{product}', [ProductController::class, 'update'])->name('products.update');
+        Route::delete('/produk/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
-        // Manajemen Stok & Laporan Penjualan (Sesuaikan controller-nya nanti)
-        Route::get('/manajemen-stok', fn () => view('admin.manajemen-stok'))->name('manajemen-stok');
-        Route::get('/laporan-penjualan', fn () => view('admin.laporan-penjualan'))->name('laporan-penjualan');
+        // Hanya admin: kelola pengguna & hak akses
+        Route::resource('pengguna', UserController::class)
+            ->parameters(['pengguna' => 'user'])
+            ->names('users')
+            ->except(['show']);
+        Route::patch('/pengguna/{user}/status', [UserController::class, 'toggleStatus'])->name('users.toggle');
     });
-
-    // ==========================================
-    // MENU KHUSUS KASIR (dan bisa diakses Admin juga)
-    // ==========================================
-    Route::middleware('role:admin,kasir')->group(function () {
-        // Transaksi Penjualan
-        Route::get('/transaksi-penjualan', fn () => view('kasir.transaksi-penjualan'))->name('transaksi-penjualan');
-        
-        // Kelola Produk (Kasir) / Produk (Admin)
-        Route::get('/kelola-produk', fn () => view('kasir.kelola-produk'))->name('kelola-produk');
-    });
-
-    // Resource Produk bawaan admin dari kode asli kamu
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
-        Route::resource('products', ProductController::class);
-    });
-
-    // ==========================================
-    // MENU BERSAMA (Admin & Kasir)
-    // ==========================================
-    Route::get('/riwayat-transaksi', fn () => view('riwayat-transaksi'))->name('riwayat-transaksi');
-    Route::get('/produk', fn () => view('produk'))->name('produk'); // Jika halaman produk umum
 });
