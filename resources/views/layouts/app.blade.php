@@ -17,8 +17,9 @@
                 <a href="{{ route('cashier.index') }}" class="hover:underline">Transaksi</a>
             @endif
 
-            {{-- Menu Pengguna hanya muncul jika user adalah admin --}}
+            {{-- Menu Stok & Pengguna hanya muncul jika user adalah admin --}}
             @if (auth()->user()->hasRole('admin'))
+                <a href="{{ route('stock.index') }}" class="hover:underline">Stok</a>
                 <a href="{{ route('users.index') }}" class="hover:underline">Pengguna</a>
             @endif
         </nav>

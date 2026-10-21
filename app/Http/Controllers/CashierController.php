@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\CheckoutRequest;
 use App\Models\Product;
 use App\Models\Transaction;
+use App\Services\StockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -12,6 +13,8 @@ use Illuminate\View\View;
 
 class CashierController extends Controller
 {
+    public function __construct(private StockService $stock) {}
+
     public function index(): View
     {
         return view('cashier.index', [
@@ -87,7 +90,12 @@ class CashierController extends Controller
                 $transaction->items()->createMany($itemRows);
 
                 foreach ($lines as $productId => $qty) {
-                    $products->get($productId)->decrement('stock', $qty);
+                    $this->stock->deductForSale(
+                        product: $products->get($productId),
+                        qty: $qty,
+                        transaction: $transaction,
+                        by: $request->user(),
+                    );
                 }
 
                 return $transaction;

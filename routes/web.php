@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/produk/{product}/ubah', [ProductController::class, 'edit'])->name('products.edit');
         Route::put('/produk/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/produk/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+
+        // Hanya admin: manajemen stok
+        Route::get('/stok', [StockController::class, 'index'])->name('stock.index');
+        Route::post('/stok', [StockController::class, 'store'])->name('stock.store');
 
         // Hanya admin: kelola pengguna & hak akses
         Route::resource('pengguna', UserController::class)

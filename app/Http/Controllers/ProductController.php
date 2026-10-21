@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProductRequest;
 use App\Models\Product;
+use App\Models\StockLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -55,6 +57,7 @@ class ProductController extends Controller
     public function update(ProductRequest $request, Product $product): RedirectResponse
     {
         $data = $request->validated();
+        $oldStock = $product->stock;
 
         if ($request->hasFile('image')) {
             $this->deleteImage($product->image);
@@ -63,7 +66,20 @@ class ProductController extends Controller
             unset($data['image']); // pertahankan gambar lama
         }
 
-        $product->update($data);
+        DB::transaction(function () use ($product, $data, $oldStock, $request) {
+            $product->update($data);
+
+            if ($product->stock !== $oldStock) {
+                StockLog::record(
+                    product: $product,
+                    type: StockLog::TYPE_PENYESUAIAN,
+                    qty: $product->stock - $oldStock,
+                    stockAfter: $product->stock,
+                    note: 'Perubahan stok dari form produk',
+                    by: $request->user(),
+                );
+            }
+        });
 
         return redirect()->route('products.index')->with('status', 'Produk berhasil diperbarui.');
     }
