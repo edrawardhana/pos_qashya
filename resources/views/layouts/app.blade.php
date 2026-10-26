@@ -8,21 +8,24 @@
 </head>
 <body class="min-h-screen bg-gray-50 text-gray-900">
     <header class="flex items-center justify-between bg-white px-6 py-4 shadow">
+
         <nav class="flex gap-4 text-sm">
             <a href="{{ route('dashboard') }}" class="hover:underline">Dashboard</a>
             <a href="{{ route('products.index') }}" class="hover:underline">Produk</a>
-            
-            {{-- Menu Transaksi hanya muncul jika user adalah kasir --}}
+
+            {{-- Menu Transaksi hanya muncul untuk kasir --}}
             @if (auth()->user()->hasRole('kasir'))
                 <a href="{{ route('cashier.index') }}" class="hover:underline">Transaksi</a>
             @endif
 
-            {{-- Menu Stok & Pengguna hanya muncul jika user adalah admin --}}
+            {{-- Menu Stok, Laporan, dan Pengguna hanya muncul untuk admin --}}
             @if (auth()->user()->hasRole('admin'))
                 <a href="{{ route('stock.index') }}" class="hover:underline">Stok</a>
+                <a href="{{ route('reports.index') }}" class="hover:underline">Laporan</a>
                 <a href="{{ route('users.index') }}" class="hover:underline">Pengguna</a>
             @endif
         </nav>
+
         <div class="flex items-center gap-4 text-sm">
             <span>{{ auth()->user()->name }} ({{ auth()->user()->role?->label }})</span>
             <form method="POST" action="{{ route('logout') }}">
