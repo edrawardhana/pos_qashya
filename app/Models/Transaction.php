@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -38,5 +40,32 @@ class Transaction extends Model
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    // --- Tambahan Scope ---
+
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        if ($term === '') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($term) {
+            $q->where('code', 'like', "%{$term}%")
+                ->orWhere('customer_name', 'like', "%{$term}%")
+                ->orWhereHas('cashier', fn (Builder $c) => $c->where('name', 'like', "%{$term}%"));
+        });
+    }
+
+    public function scopeCreatedBetween(Builder $query, ?Carbon $from, ?Carbon $to): Builder
+    {
+        return $query
+            ->when($from, fn (Builder $q) => $q->where('created_at', '>=', $from))
+            ->when($to, fn (Builder $q) => $q->where('created_at', '<=', $to));
+    }
+
+    public function scopePaymentMethod(Builder $query, ?string $method): Builder
+    {
+        return $query->when($method, fn (Builder $q) => $q->where('payment_method', $method));
     }
 }

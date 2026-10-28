@@ -35,7 +35,11 @@
     </dl>
 
     <div class="mt-6 flex gap-3">
-        <a href="{{ route('cashier.index') }}" class="flex-1 rounded bg-black py-2 text-center text-sm text-white">Transaksi baru</a>
+        @if (auth()->user()->hasRole('kasir'))
+            <a href="{{ route('cashier.index') }}" class="flex-1 rounded bg-black py-2 text-center text-sm text-white">Transaksi baru</a>
+        @else
+            <a href="{{ route('history.index') }}" class="flex-1 rounded bg-black py-2 text-center text-sm text-white">Kembali ke riwayat</a>
+        @endif
         <button type="button" onclick="window.print()" class="flex-1 rounded border py-2 text-sm">Cetak</button>
     </div>
 </div>

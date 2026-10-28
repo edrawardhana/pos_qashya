@@ -12,6 +12,7 @@
         <nav class="flex gap-4 text-sm">
             <a href="{{ route('dashboard') }}" class="hover:underline">Dashboard</a>
             <a href="{{ route('products.index') }}" class="hover:underline">Produk</a>
+            <a href="{{ route('history.index') }}" class="hover:underline">Riwayat</a>
 
             {{-- Menu Transaksi hanya muncul untuk kasir --}}
             @if (auth()->user()->hasRole('kasir'))

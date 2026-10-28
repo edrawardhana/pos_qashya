@@ -6,6 +6,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TransactionHistoryController; // <-- Tambahan import controller
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -23,6 +24,13 @@ Route::middleware('auth')->group(function () {
     // Admin dan kasir: lihat daftar produk
     Route::get('/produk', [ProductController::class, 'index'])
         ->name('products.index');
+
+    // Admin dan kasir: Riwayat transaksi (Bisa diakses keduanya)
+    Route::get('/riwayat', [TransactionHistoryController::class, 'index'])
+        ->name('history.index');
+        
+    Route::get('/riwayat/{transaction}', [TransactionHistoryController::class, 'show'])
+        ->name('history.show');
 
     // Hanya kasir: transaksi penjualan
     Route::middleware('role:kasir')->group(function () {
