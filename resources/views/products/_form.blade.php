@@ -72,8 +72,10 @@
         @if ($isEdit && $product->image_url)
             <img src="{{ $product->image_url }}" alt="" class="mb-2 h-24 w-24 rounded object-cover">
         @endif
-        <input id="image" name="image" type="file" accept="image/jpeg,image/png" class="mt-1 text-sm">
-        <p class="mt-1 text-xs text-gray-500">JPG/PNG, maks 1,5 MB.{{ $isEdit ? ' Kosongkan jika tidak ingin mengganti gambar.' : '' }}</p>
+        <input id="image" name="image" type="file" accept="image/jpeg,image/png"
+            aria-describedby="image-help"
+            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 text-sm text-gray-700 transition hover:border-gray-500 hover:bg-gray-100 file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white">
+        <p id="image-help" class="mt-2 text-xs text-gray-500">Pilih gambar JPG/PNG, maks 1,5 MB.{{ $isEdit ? ' Kosongkan jika tidak ingin mengganti gambar.' : '' }}</p>
         @error('image') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
     </div>
 
