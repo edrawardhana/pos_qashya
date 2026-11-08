@@ -67,6 +67,35 @@ class DashboardTest extends TestCase
             ->assertDontSee('Tren penjualan 7 hari');
     }
 
+    public function test_sidebar_navigation_is_separated_by_role(): void
+    {
+        $admin = $this->userWithRole(Role::ADMIN);
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Kelola Produk')
+            ->assertSee('Manajemen Stok')
+            ->assertSee('Kelola Pengguna')
+            ->assertSee('Laporan Penjualan')
+            ->assertSee('Riwayat Transaksi')
+            ->assertDontSee('Transaksi Penjualan')
+            ->assertDontSee('Lihat Produk');
+
+        $cashier = $this->userWithRole(Role::KASIR);
+
+        $this->actingAs($cashier)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Transaksi Penjualan')
+            ->assertSee('Lihat Produk')
+            ->assertSee('Riwayat Transaksi')
+            ->assertDontSee('Kelola Produk')
+            ->assertDontSee('Manajemen Stok')
+            ->assertDontSee('Kelola Pengguna')
+            ->assertDontSee('Laporan Penjualan');
+    }
+
     private function userWithRole(string $roleName): User
     {
         $role = Role::firstOrCreate(
